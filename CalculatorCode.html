@@ -1,0 +1,491 @@
+import React, { useState } from 'react';
+
+export default function AdvancedCalculator() {
+  const [mode, setMode] = useState('basic');
+  const [display, setDisplay] = useState('0');
+  const [previousValue, setPreviousValue] = useState(null);
+  const [operation, setOperation] = useState(null);
+  const [waitingForOperand, setWaitingForOperand] = useState(false);
+  const [memory, setMemory] = useState(0);
+
+  // Vector state
+  const [vector1, setVector1] = useState([0, 0, 0]);
+  const [vector2, setVector2] = useState([0, 0, 0]);
+  const [vectorResult, setVectorResult] = useState(null);
+
+  // Complex number state
+  const [complexReal, setComplexReal] = useState(0);
+  const [complexImag, setComplexImag] = useState(0);
+  const [complexReal2, setComplexReal2] = useState(0);
+  const [complexImag2, setComplexImag2] = useState(0);
+  const [complexResult, setComplexResult] = useState(null);
+
+  // Calculus state
+  const [derivativeFunc, setDerivativeFunc] = useState('x^2');
+  const [derivativePoint, setDerivativePoint] = useState(1);
+  const [derivativeResult, setDerivativeResult] = useState(null);
+  const [integralFunc, setIntegralFunc] = useState('x^2');
+  const [integralA, setIntegralA] = useState(0);
+  const [integralB, setIntegralB] = useState(1);
+  const [integralResult, setIntegralResult] = useState(null);
+
+  // Safe function evaluator
+  const evaluateFunction = (funcStr, xValue) => {
+    try {
+      const expression = funcStr
+        .replace(/sin/g, 'Math.sin')
+        .replace(/cos/g, 'Math.cos')
+        .replace(/tan/g, 'Math.tan')
+        .replace(/sqrt/g, 'Math.sqrt')
+        .replace(/log/g, 'Math.log10')
+        .replace(/ln/g, 'Math.log')
+        .replace(/abs/g, 'Math.abs')
+        .replace(/exp/g, 'Math.exp')
+        .replace(/\^/g, '**')
+        .replace(/x/g, `(${xValue})`);
+      
+      return Function('"use strict"; return (' + expression + ')')();
+    } catch (error) {
+      throw new Error(`Invalid function: ${error.message}`);
+    }
+  };
+
+  // Basic Calculator Functions
+  const handleNumber = (num) => {
+    if (waitingForOperand) {
+      setDisplay(String(num));
+      setWaitingForOperand(false);
+    } else {
+      setDisplay(display === '0' ? String(num) : display + num);
+    }
+  };
+
+  const handleDecimal = () => {
+    if (waitingForOperand) {
+      setDisplay('0.');
+      setWaitingForOperand(false);
+    } else if (!display.includes('.')) {
+      setDisplay(display + '.');
+    }
+  };
+
+  const calculate = (prev, op, current) => {
+    const a = parseFloat(prev);
+    const b = parseFloat(current);
+    switch(op) {
+      case '+': return a + b;
+      case '-': return a - b;
+      case '*': return a * b;
+      case '/': return b !== 0 ? a / b : NaN;
+      case '^': return Math.pow(a, b);
+      default: return b;
+    }
+  };
+
+  const handleOperation = (op) => {
+    const currentValue = parseFloat(display);
+    if (previousValue === null) {
+      setPreviousValue(currentValue);
+    } else if (operation) {
+      const result = calculate(previousValue, operation, currentValue);
+      if (isNaN(result)) {
+        setDisplay('Error');
+        setPreviousValue(null);
+        setOperation(null);
+        setWaitingForOperand(true);
+        return;
+      }
+      setDisplay(String(result));
+      setPreviousValue(result);
+    }
+    setOperation(op);
+    setWaitingForOperand(true);
+  };
+
+  const handleEquals = () => {
+    const currentValue = parseFloat(display);
+    if (previousValue !== null && operation) {
+      const result = calculate(previousValue, operation, currentValue);
+      if (isNaN(result)) {
+        setDisplay('Error');
+      } else {
+        setDisplay(String(result));
+      }
+      setPreviousValue(null);
+      setOperation(null);
+      setWaitingForOperand(true);
+    }
+  };
+
+  const handleAdvanced = (func) => {
+    try {
+      let result;
+      const num = parseFloat(display);
+      switch(func) {
+        case 'sin': result = Math.sin(num * Math.PI / 180); break;
+        case 'cos': result = Math.cos(num * Math.PI / 180); break;
+        case 'tan': result = Math.tan(num * Math.PI / 180); break;
+        case 'sqrt': result = num >= 0 ? Math.sqrt(num) : NaN; break;
+        case 'square': result = num * num; break;
+        case 'log': result = num > 0 ? Math.log10(num) : NaN; break;
+        case 'ln': result = num > 0 ? Math.log(num) : NaN; break;
+        default: result = num;
+      }
+      if (isNaN(result)) {
+        setDisplay('Error');
+      } else {
+        setDisplay(String(result));
+      }
+      setWaitingForOperand(true);
+      setPreviousValue(null);
+      setOperation(null);
+    } catch {
+      setDisplay('Error');
+    }
+  };
+
+  const handleMemory = (op) => {
+    const num = parseFloat(display);
+    switch(op) {
+      case 'M+': setMemory(memory + num); break;
+      case 'M-': setMemory(memory - num); break;
+      case 'MR': setDisplay(String(memory)); setWaitingForOperand(true); break;
+      case 'MC': setMemory(0); break;
+    }
+  };
+
+  const handleClear = () => {
+    setDisplay('0');
+    setPreviousValue(null);
+    setOperation(null);
+    setWaitingForOperand(false);
+  };
+
+  // Vector Operations
+  const vectorDotProduct = () => {
+    const result = vector1[0]*vector2[0] + vector1[1]*vector2[1] + vector1[2]*vector2[2];
+    setVectorResult(`Dot Product: ${result}`);
+  };
+
+  const vectorCrossProduct = () => {
+    const result = [
+      vector1[1]*vector2[2] - vector1[2]*vector2[1],
+      vector1[2]*vector2[0] - vector1[0]*vector2[2],
+      vector1[0]*vector2[1] - vector1[1]*vector2[0]
+    ];
+    setVectorResult(`Cross Product: [${result.map(x => x.toFixed(2)).join(', ')}]`);
+  };
+
+  const vectorMagnitude = () => {
+    const mag1 = Math.sqrt(vector1[0]**2 + vector1[1]**2 + vector1[2]**2);
+    const mag2 = Math.sqrt(vector2[0]**2 + vector2[1]**2 + vector2[2]**2);
+    setVectorResult(`|V1|: ${mag1.toFixed(4)}, |V2|: ${mag2.toFixed(4)}`);
+  };
+
+  // Complex Number Operations
+  const complexAdd = () => {
+    const real = complexReal + complexReal2;
+    const imag = complexImag + complexImag2;
+    setComplexResult(`${real.toFixed(4)} + ${imag.toFixed(4)}i`);
+  };
+
+  const complexMultiply = () => {
+    const real = complexReal * complexReal2 - complexImag * complexImag2;
+    const imag = complexReal * complexImag2 + complexImag * complexReal2;
+    setComplexResult(`${real.toFixed(4)} + ${imag.toFixed(4)}i`);
+  };
+
+  const complexMagnitude = () => {
+    const mag1 = Math.sqrt(complexReal**2 + complexImag**2);
+    const mag2 = Math.sqrt(complexReal2**2 + complexImag2**2);
+    setComplexResult(`|Z1|: ${mag1.toFixed(4)}, |Z2|: ${mag2.toFixed(4)}`);
+  };
+
+  // Numerical Differentiation
+  const numericalDerivative = () => {
+    try {
+      if (!derivativeFunc.trim()) {
+        setDerivativeResult('Please enter a function');
+        return;
+      }
+      
+      const x = parseFloat(derivativePoint);
+      if (isNaN(x)) {
+        setDerivativeResult('Please enter a valid point');
+        return;
+      }
+
+      const h = 0.00001;
+      const f_plus = evaluateFunction(derivativeFunc, x + h);
+      const f_minus = evaluateFunction(derivativeFunc, x - h);
+      const derivative = (f_plus - f_minus) / (2 * h);
+      
+      if (isNaN(derivative) || !isFinite(derivative)) {
+        setDerivativeResult('Cannot compute derivative at this point');
+      } else {
+        setDerivativeResult(`f'(${x}) ≈ ${derivative.toFixed(8)}`);
+      }
+    } catch (error) {
+      setDerivativeResult(`Error: ${error.message}`);
+    }
+  };
+
+  // Numerical Integration (Simpson's Rule)
+  const numericalIntegration = () => {
+    try {
+      if (!integralFunc.trim()) {
+        setIntegralResult('Please enter a function');
+        return;
+      }
+
+      const a = parseFloat(integralA);
+      const b = parseFloat(integralB);
+
+      if (isNaN(a) || isNaN(b)) {
+        setIntegralResult('Please enter valid bounds');
+        return;
+      }
+
+      if (a >= b) {
+        setIntegralResult('Lower bound must be less than upper bound');
+        return;
+      }
+
+      const n = 1000;
+      const dx = (b - a) / n;
+      let sum = 0;
+
+      for (let i = 0; i <= n; i++) {
+        const x = a + i * dx;
+        const fval = evaluateFunction(integralFunc, x);
+        
+        if (isNaN(fval) || !isFinite(fval)) {
+          setIntegralResult('Function undefined in integration range');
+          return;
+        }
+
+        if (i === 0 || i === n) {
+          sum += fval;
+        } else if (i % 2 === 1) {
+          sum += 4 * fval;
+        } else {
+          sum += 2 * fval;
+        }
+      }
+
+      const integral = (dx / 3) * sum;
+
+      if (isNaN(integral) || !isFinite(integral)) {
+        setIntegralResult('Cannot compute integral');
+      } else {
+        setIntegralResult(`∫(${integralFunc})dx from ${a} to ${b} ≈ ${integral.toFixed(8)}`);
+      }
+    } catch (error) {
+      setIntegralResult(`Error: ${error.message}`);
+    }
+  };
+
+  const Button = ({ onClick, children, variant = 'default' }) => {
+    const styles = {
+      default: 'bg-gradient-to-br from-pink-400 to-pink-500 hover:from-pink-500 hover:to-pink-600 text-gray-900 font-bold text-lg shadow-lg hover:shadow-xl',
+      operator: 'bg-gradient-to-br from-pink-500 to-pink-600 hover:from-pink-600 hover:to-pink-700 text-white font-bold text-lg shadow-lg hover:shadow-xl',
+      memory: 'bg-gradient-to-br from-pink-300 to-pink-400 hover:from-pink-400 hover:to-pink-500 text-gray-900 font-bold text-sm shadow-md hover:shadow-lg',
+      function: 'bg-gradient-to-br from-pink-400 to-pink-500 hover:from-pink-500 hover:to-pink-600 text-gray-900 font-bold text-sm shadow-md hover:shadow-lg',
+      mode: 'bg-gradient-to-r from-pink-600 to-pink-700 hover:from-pink-700 hover:to-pink-800 text-white font-bold text-base shadow-lg hover:shadow-xl'
+    };
+    return (
+      <button
+        onClick={onClick}
+        className={`${styles[variant]} px-6 py-4 rounded-xl transition-all duration-200 active:scale-95 font-bold h-16 flex items-center justify-center transform hover:scale-105 border border-white/20`}
+      >
+        {children}
+      </button>
+    );
+  };
+
+  return (
+    <div className="min-h-screen bg-white flex items-center justify-center p-4">
+      <div className="w-full max-w-7xl bg-white rounded-2xl shadow-2xl p-8 border-2 border-pink-500/30 backdrop-blur-sm">
+        
+        {/* Mode Selector */}
+        <div className="flex gap-3 mb-8 overflow-x-auto pb-2">
+          <Button onClick={() => setMode('basic')} variant={mode === 'basic' ? 'mode' : 'operator'}>📱 Basic</Button>
+          <Button onClick={() => setMode('vector')} variant={mode === 'vector' ? 'mode' : 'operator'}>➡️ Vectors</Button>
+          <Button onClick={() => setMode('complex')} variant={mode === 'complex' ? 'mode' : 'operator'}>ℂ Complex</Button>
+          <Button onClick={() => setMode('calculus')} variant={mode === 'calculus' ? 'mode' : 'operator'}>∫ Calculus</Button>
+        </div>
+
+        {/* Display */}
+        <div className="bg-gradient-to-br from-gray-50 to-gray-100 rounded-2xl p-8 mb-8 border-2 border-pink-400/30 shadow-inner">
+          <div className="text-right text-8xl font-bold bg-gradient-to-r from-pink-500 to-pink-700 bg-clip-text text-transparent break-words overflow-hidden drop-shadow-lg">
+            {display}
+          </div>
+          {memory !== 0 && <div className="text-right text-2xl text-pink-600 font-bold mt-3 drop-shadow">Memory: {memory}</div>}
+          {operation && <div className="text-right text-2xl text-pink-600 font-bold mt-2 drop-shadow">Op: {operation}</div>}
+        </div>
+
+        {/* Basic Mode */}
+        {mode === 'basic' && (
+          <>
+            <div className="mb-6 pb-6 border-b-2 border-pink-400/20">
+              <div className="text-2xl text-pink-600 mb-4 font-bold bg-gradient-to-r from-pink-600 to-pink-700 bg-clip-text text-transparent">✨ Functions</div>
+              <div className="grid grid-cols-10 gap-3">
+                <Button onClick={() => handleAdvanced('sin')} variant="function">sin</Button>
+                <Button onClick={() => handleAdvanced('cos')} variant="function">cos</Button>
+                <Button onClick={() => handleAdvanced('tan')} variant="function">tan</Button>
+                <Button onClick={() => handleAdvanced('log')} variant="function">log</Button>
+                <Button onClick={() => handleAdvanced('ln')} variant="function">ln</Button>
+                <Button onClick={() => handleAdvanced('sqrt')} variant="function">√</Button>
+                <Button onClick={() => handleAdvanced('square')} variant="function">x²</Button>
+                <Button onClick={() => handleMemory('M+')} variant="memory">M+</Button>
+                <Button onClick={() => handleMemory('MR')} variant="memory">MR</Button>
+                <Button onClick={handleClear} variant="operator">Clear</Button>
+              </div>
+            </div>
+
+            <div className="flex gap-8">
+              <div className="flex-1">
+                <div className="text-2xl text-pink-600 mb-4 font-bold bg-gradient-to-r from-pink-600 to-pink-700 bg-clip-text text-transparent">🔢 Digits</div>
+                <div className="grid grid-cols-3 gap-4">
+                  <Button onClick={() => handleNumber(7)}>7</Button>
+                  <Button onClick={() => handleNumber(8)}>8</Button>
+                  <Button onClick={() => handleNumber(9)}>9</Button>
+                  <Button onClick={() => handleNumber(4)}>4</Button>
+                  <Button onClick={() => handleNumber(5)}>5</Button>
+                  <Button onClick={() => handleNumber(6)}>6</Button>
+                  <Button onClick={() => handleNumber(1)}>1</Button>
+                  <Button onClick={() => handleNumber(2)}>2</Button>
+                  <Button onClick={() => handleNumber(3)}>3</Button>
+                  <Button onClick={() => handleNumber(0)} className="col-span-2">0</Button>
+                  <Button onClick={handleDecimal}>.</Button>
+                </div>
+              </div>
+
+              <div className="flex-1">
+                <div className="text-2xl text-pink-600 mb-4 font-bold bg-gradient-to-r from-pink-600 to-pink-700 bg-clip-text text-transparent">➕ Operators</div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="flex flex-col gap-4">
+                    <Button onClick={() => handleOperation('+')} variant="operator" className="flex-1">+</Button>
+                    <Button onClick={() => handleOperation('-')} variant="operator" className="flex-1">−</Button>
+                    <Button onClick={() => handleOperation('*')} variant="operator" className="flex-1">×</Button>
+                    <Button onClick={() => handleOperation('/')} variant="operator" className="flex-1">÷</Button>
+                  </div>
+                  <div className="flex flex-col gap-4">
+                    <Button onClick={handleEquals} variant="operator" className="flex-1 row-span-4">=</Button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </>
+        )}
+
+        {/* Vector Mode */}
+        {mode === 'vector' && (
+          <div className="space-y-6">
+            <div className="bg-gradient-to-br from-gray-50 to-gray-100 p-6 rounded-2xl border-2 border-pink-400/30 shadow-lg">
+              <div className="text-2xl text-transparent bg-gradient-to-r from-pink-600 to-pink-700 bg-clip-text font-bold mb-4">📊 Vector 1: [{vector1[0]}, {vector1[1]}, {vector1[2]}]</div>
+              <div className="grid grid-cols-3 gap-3 mb-4">
+                {[0, 1, 2].map(i => (
+                  <input key={i} type="number" value={vector1[i]} onChange={(e) => setVector1([...vector1.slice(0, i), parseFloat(e.target.value) || 0, ...vector1.slice(i+1)])} className="bg-white text-gray-900 p-4 rounded text-center border-2 border-pink-300 text-lg font-bold" placeholder={`V1[${i}]`} />
+                ))}
+              </div>
+
+              <div className="text-2xl text-transparent bg-gradient-to-r from-pink-600 to-pink-700 bg-clip-text font-bold mb-4">📊 Vector 2: [{vector2[0]}, {vector2[1]}, {vector2[2]}]</div>
+              <div className="grid grid-cols-3 gap-3 mb-6">
+                {[0, 1, 2].map(i => (
+                  <input key={i} type="number" value={vector2[i]} onChange={(e) => setVector2([...vector2.slice(0, i), parseFloat(e.target.value) || 0, ...vector2.slice(i+1)])} className="bg-white text-gray-900 p-4 rounded text-center border-2 border-pink-300 text-lg font-bold" placeholder={`V2[${i}]`} />
+                ))}
+              </div>
+
+              <div className="grid grid-cols-3 gap-3 mb-4">
+                <Button onClick={vectorDotProduct} variant="operator">Dot Product</Button>
+                <Button onClick={vectorCrossProduct} variant="operator">Cross Product</Button>
+                <Button onClick={vectorMagnitude} variant="operator">Magnitude</Button>
+              </div>
+
+              {vectorResult && <div className="text-pink-600 text-center font-bold p-4 bg-gradient-to-r from-pink-100 to-pink-50 rounded-xl shadow-md border border-pink-200 text-xl">{vectorResult}</div>}
+            </div>
+          </div>
+        )}
+
+        {/* Complex Number Mode */}
+        {mode === 'complex' && (
+          <div className="space-y-6">
+            <div className="bg-gradient-to-br from-gray-50 to-gray-100 p-6 rounded-2xl border-2 border-pink-400/30 shadow-lg">
+              <div className="text-2xl text-transparent bg-gradient-to-r from-pink-600 to-pink-700 bg-clip-text font-bold mb-4">ℂ Z1: {complexReal.toFixed(2)} + {complexImag.toFixed(2)}i</div>
+              <div className="grid grid-cols-2 gap-3 mb-4">
+                <input type="number" value={complexReal} onChange={(e) => setComplexReal(parseFloat(e.target.value) || 0)} className="bg-white text-gray-900 p-4 rounded border-2 border-pink-300 text-lg font-bold" placeholder="Real part" />
+                <input type="number" value={complexImag} onChange={(e) => setComplexImag(parseFloat(e.target.value) || 0)} className="bg-white text-gray-900 p-4 rounded border-2 border-pink-300 text-lg font-bold" placeholder="Imaginary part" />
+              </div>
+
+              <div className="text-2xl text-transparent bg-gradient-to-r from-pink-600 to-pink-700 bg-clip-text font-bold mb-4">ℂ Z2: {complexReal2.toFixed(2)} + {complexImag2.toFixed(2)}i</div>
+              <div className="grid grid-cols-2 gap-3 mb-6">
+                <input type="number" value={complexReal2} onChange={(e) => setComplexReal2(parseFloat(e.target.value) || 0)} className="bg-white text-gray-900 p-4 rounded border-2 border-pink-300 text-lg font-bold" placeholder="Real part" />
+                <input type="number" value={complexImag2} onChange={(e) => setComplexImag2(parseFloat(e.target.value) || 0)} className="bg-white text-gray-900 p-4 rounded border-2 border-pink-300 text-lg font-bold" placeholder="Imaginary part" />
+              </div>
+
+              <div className="grid grid-cols-3 gap-3 mb-4">
+                <Button onClick={complexAdd} variant="operator">Add</Button>
+                <Button onClick={complexMultiply} variant="operator">Multiply</Button>
+                <Button onClick={complexMagnitude} variant="operator">Magnitude</Button>
+              </div>
+
+              {complexResult && <div className="text-pink-600 text-center font-bold p-4 bg-gradient-to-r from-pink-100 to-pink-50 rounded-xl shadow-md border border-pink-200 text-xl">{complexResult}</div>}
+            </div>
+          </div>
+        )}
+
+        {/* Calculus Mode */}
+        {mode === 'calculus' && (
+          <div className="space-y-6">
+            <div className="bg-gradient-to-r from-pink-50 to-pink-100 p-4 rounded-xl border-2 border-pink-400/30 text-lg text-pink-700 font-bold shadow-md">
+              <strong>Function Format:</strong> Use 'x' for variable. Examples: x^2, sin(x), sqrt(x), exp(x), x^3+2*x, 1/x
+            </div>
+
+            {/* Differentiation */}
+            <div className="bg-gradient-to-br from-gray-50 to-gray-100 p-6 rounded-2xl border-2 border-pink-400/30 shadow-lg">
+              <div className="text-2xl text-transparent bg-gradient-to-r from-pink-600 to-pink-700 bg-clip-text font-bold mb-4">📊 Differentiation</div>
+              <div className="grid grid-cols-2 gap-3 mb-4">
+                <div>
+                  <label className="text-pink-600 text-lg block mb-2 font-bold">Function (e.g., x^2)</label>
+                  <input type="text" value={derivativeFunc} onChange={(e) => setDerivativeFunc(e.target.value)} className="bg-white text-gray-900 p-4 rounded w-full border-2 border-pink-300 text-lg font-bold" placeholder="x^2" />
+                </div>
+                <div>
+                  <label className="text-pink-600 text-lg block mb-2 font-bold">Point (x value)</label>
+                  <input type="number" step="0.1" value={derivativePoint} onChange={(e) => setDerivativePoint(e.target.value)} className="bg-white text-gray-900 p-4 rounded w-full border-2 border-pink-300 text-lg font-bold" placeholder="1" />
+                </div>
+              </div>
+              <Button onClick={numericalDerivative} variant="operator" className="w-full mb-4">Calculate Derivative</Button>
+              {derivativeResult && <div className="text-pink-600 text-center font-bold p-4 bg-gradient-to-r from-pink-100 to-pink-50 rounded-xl shadow-md border border-pink-200 break-words text-xl">{derivativeResult}</div>}
+              <div className="text-pink-600 text-lg mt-3 font-bold bg-gradient-to-r from-pink-50 to-pink-100 p-3 rounded-lg border border-pink-200">💡 Example: f(x) = x^2 → f'(1) ≈ 2</div>
+            </div>
+
+            {/* Integration */}
+            <div className="bg-gradient-to-br from-gray-50 to-gray-100 p-6 rounded-2xl border-2 border-pink-400/30 shadow-lg">
+              <div className="text-2xl text-transparent bg-gradient-to-r from-pink-600 to-pink-700 bg-clip-text font-bold mb-4">∫ Integration (Simpson's Rule)</div>
+              <div className="grid grid-cols-3 gap-3 mb-4">
+                <div>
+                  <label className="text-pink-600 text-lg block mb-2 font-bold">Function</label>
+                  <input type="text" value={integralFunc} onChange={(e) => setIntegralFunc(e.target.value)} className="bg-white text-gray-900 p-4 rounded w-full border-2 border-pink-300 text-lg font-bold" placeholder="x^2" />
+                </div>
+                <div>
+                  <label className="text-pink-600 text-lg block mb-2 font-bold">From (a)</label>
+                  <input type="number" step="0.1" value={integralA} onChange={(e) => setIntegralA(e.target.value)} className="bg-white text-gray-900 p-4 rounded w-full border-2 border-pink-300 text-lg font-bold" placeholder="0" />
+                </div>
+                <div>
+                  <label className="text-pink-600 text-lg block mb-2 font-bold">To (b)</label>
+                  <input type="number" step="0.1" value={integralB} onChange={(e) => setIntegralB(e.target.value)} className="bg-white text-gray-900 p-4 rounded w-full border-2 border-pink-300 text-lg font-bold" placeholder="1" />
+                </div>
+              </div>
+              <Button onClick={numericalIntegration} variant="operator" className="w-full mb-4">Calculate Integral</Button>
+              {integralResult && <div className="text-pink-600 text-center font-bold p-4 bg-gradient-to-r from-pink-100 to-pink-50 rounded-xl shadow-md border border-pink-200 break-words text-xl">{integralResult}</div>}
+              <div className="text-pink-600 text-lg mt-3 font-bold bg-gradient-to-r from-pink-50 to-pink-100 p-3 rounded-lg border border-pink-200">💡 Example: ∫x^2 dx from 0 to 1 ≈ 0.333333</div>
+            </div>
+          </div>
+        )}
+
+        <div className="text-center text-transparent bg-gradient-to-r from-pink-600 to-pink-700 bg-clip-text text-2xl font-bold mt-8">✨ Advanced Scientific Calculator with Vectors, Complex Numbers & Calculus ✨</div>
+      </div>
+    </div>
+  );
+}
